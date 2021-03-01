@@ -49,10 +49,11 @@ def get_reddit_data():
     username="KimiNoNaWa",
     password="!Divisi04")
 
-    subreddits = ["politics"]
+    subreddits = ["news", "worldnews"]
 
     data = {}
-    data['politics'] = []
+    data['news'] = []
+    data['worldnews']
             
     # go through each subreddit
     for sr in subreddits:
@@ -63,17 +64,22 @@ def get_reddit_data():
             if count > 1001:
                 break
             
-            if submission.created_utc < 1586304000 and submission.created_utc > 1607558399:
+            ## politics
+            # if submission.created_utc < 1586304000 and submission.created_utc > 1607558399:
+            #     continue
+
+            ## news and worldnews
+            if submission.created_utc < 1583020800 and submission.created_utc > 1614556800:
                 continue
             
             post = get_post_data(submission, "n/a", str(sub))
-            data['politics'].append(post)
+            data['news'].append(post)
             count += 1 
     
-    print(len(data['politics']))
+            print(len(data['news']))
     
-    with open('subreddit_data.json','w', encoding='utf-8') as f: 
-        json.dump(data, f, indent=4, sort_keys=True, ensure_ascii=False) 
+        with open(sr + '_subreddit_data.json','w', encoding='utf-8') as f: 
+            json.dump(data, f, indent=4, sort_keys=True, ensure_ascii=False) 
             
 
            

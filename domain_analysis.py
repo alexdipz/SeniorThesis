@@ -6,6 +6,7 @@ import numpy as np
 import statistics as stats
 from collections import Counter, namedtuple
 import tldextract
+import matplotlib.pyplot as plt
 
 class Subreddit_Domain_Data:
 
@@ -18,7 +19,6 @@ class Subreddit_Domain_Data:
         self.titles = []
         self.words_in_titles = []
         self.words_in_comments_on_posts = []
-        self.stopwords = self.stopwords()
         self.urls = []
         self.domain_counts = {}
 
@@ -219,9 +219,73 @@ class Subreddit_Domain_Data:
         print(weighted_average_bias)
         print(weighted_average_reliability)
     
+    def get_bias_histogram(self):
+        bias = self.domain_bias_ratings()
+        domain_counts = self.domain_counts
+
+        bias_ratings = []
+        counts = []
+
+
+        for domain in domain_counts:
+            try:
+                bias_ratings.append(bias[domain])
+                counts.append(domain_counts[domain])
+            except:
+                pass
+        
+        bias_ratings_full = []
+        for i in range(len(bias_ratings)):
+            for j in range(counts[i]):
+                bias_ratings_full.append(bias_ratings[i])
+        
+        ## create bias histogram
+        n, bins, patches = plt.hist(bias_ratings_full, 30, facecolor='blue', alpha=0.5)
+        plt.xlabel('Source Counts')
+        plt.ylabel('Bias Ratings')
+        plt.title('Bias Ratings of /r/' + self.subreddit + ' Posts\' Sources')
+
+        # We can set the number of bins with the `bins` kwarg
+        plt.show()
+
+        return
+
+    def get_reliability_histogram(self):
+        reliability = self.domain_reliability_ratings()
+        domain_counts = self.domain_counts
+
+        reliability_ratings = []
+        counts = []
+
+
+        for domain in domain_counts:
+            try:
+                reliability_ratings.append(reliability[domain])
+                counts.append(domain_counts[domain])
+            except:
+                pass
+        
+        reliability_ratings_full = []
+        for i in range(len(reliability_ratings)):
+            for j in range(counts[i]):
+                reliability_ratings_full.append(reliability_ratings[i])
+        
+        ## create bias histogram
+        n, bins, patches = plt.hist(reliability_ratings_full, 30, facecolor='blue', alpha=0.5)
+        plt.xlabel('Source Counts')
+        plt.ylabel('Reliability Ratings')
+        plt.title('Reliability Ratings of /r/' + self.subreddit + ' Posts\' Sources')
+
+        # We can set the number of bins with the `bins` kwarg
+        plt.show()
+
+        return
+
     def get_post_data(self):
         self.get_url_domain_counts()
         self.get_domain_calculations()
+        ## self.get_reliability_histogram()
+        ## self.get_bias_histogram()
         return
 
 def main():

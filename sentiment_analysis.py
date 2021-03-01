@@ -11,6 +11,9 @@ from pprint import pprint
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize, RegexpTokenizer
+from nltk.probability import FreqDist
 
 class Subreddit_Sentiment_Analysis:
 
@@ -26,6 +29,7 @@ class Subreddit_Sentiment_Analysis:
         self.stopwords = self.stopwords()
         self.urls = []
         self.domain_counts = {}
+        self.top_comments = []
 
         self.stats = {}
 
@@ -38,6 +42,11 @@ class Subreddit_Sentiment_Analysis:
                 self.comments_per_post.append(int(post['num_comments']))
                 self.titles.append(post['title'].strip())
                 self.urls.append(post['url'])
+
+                for comment in post['top_comments']:
+                    if comment['author'] != "AutoModerator":
+                        self.top_comments.append(comment['text'])
+                
                     
     def stopwords(self):
         stopwords = ['a', 'about', 'above', 'across', 'after', 'afterwards']
@@ -97,6 +106,17 @@ class Subreddit_Sentiment_Analysis:
     def removeStopwords(self, wordlist, stopwords):
         return [w for w in wordlist if w not in stopwords]
 
+    def process_text(self, headlines):
+        tokens = []
+        stop_words = stopwords.words('english')
+        tokenizer = RegexpTokenizer(r'\w+')
+        for line in headlines:
+            toks = tokenizer.tokenize(line)
+            toks = [t.lower() for t in toks if t.lower() not in stop_words]
+            tokens.extend(toks)
+        
+        return tokens
+
     def get_average_stddev_counts(self):
         
         # calculates average score and average comment counts for top posts in given subreddit
@@ -119,11 +139,23 @@ class Subreddit_Sentiment_Analysis:
         # split() returns list of all the words in the string 
         word_counts = Counter(all_title_text) 
 
-        print(word_counts.most_common(20))
-
         return
     
-    def conduct_sentiment_analysis(self):
+    def get_positive_words(self, df):
+        pos_lines = list(df[df.label == 1].headline)
+        pos_tokens = self.process_text(pos_lines)
+        pos_freq = FreqDist(pos_tokens)
+        print(pos_freq.most_common(20))
+    
+    def get_negative_words(self, df):
+        neg_lines = list(df[df.label == -1].headline)
+
+        neg_tokens = self.process_text(neg_lines)
+        neg_freq = FreqDist(neg_tokens)
+
+        print(neg_freq.most_common(20))
+    
+    def conduct_sentiment_analysis_headlines(self):
         sia = SIA()
         results = []
 
@@ -131,7 +163,7 @@ class Subreddit_Sentiment_Analysis:
             pol_score = sia.polarity_scores(line)
             pol_score['headline'] = line
             results.append(pol_score)
-
+        
         pprint(results, width=100)
 
         df = pd.DataFrame.from_records(results)
@@ -152,13 +184,49 @@ class Subreddit_Sentiment_Analysis:
         ax.set_xticklabels(['Negative', 'Neutral', 'Positive'])
         ax.set_ylabel("Percentage")
 
-        # plt.show()
+        plt.show()
+        return(df)
+
+    def conduct_sentiment_analysis_comments(self):
+        sia = SIA()
+        results = []
+
+        for comment in self.top_comments:
+            if "Biden" or "biden" in comment:
+                pol_score = sia.polarity_scores(comment)
+                pol_score['comment'] = comment
+                results.append(pol_score)
+        
+        pprint(results, width=100)
+
+        df = pd.DataFrame.from_records(results)
+        df['label'] = 0
+        df.loc[df['compound'] > 0.2, 'label'] = 1
+        df.loc[df['compound'] < -0.2, 'label'] = -1
+        df.head()
+
+        df2 = df[['comment', 'label']]
+        df2.to_csv('politics_comment_labels.csv', mode='a', encoding='utf-8', index=False)
+
+        fig, ax = plt.subplots(figsize=(8, 8))
+
+        counts = df.label.value_counts(normalize=True) * 100
+
+        sns.barplot(x=counts.index, y=counts, ax=ax)
+
+        ax.set_xticklabels(['Negative', 'Neutral', 'Positive'])
+        ax.set_ylabel("Percentage")
+
+        plt.show()
+        return(df)
 
 
     def get_post_data(self):
         self.get_average_stddev_counts()
         self.get_title_word_counts()
-        self.conduct_sentiment_analysis()
+        df = self.conduct_sentiment_analysis_comments()
+        ##self.get_positive_words(df)
+        ##self.get_negative_words(df)
 
         return
         
