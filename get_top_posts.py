@@ -47,13 +47,13 @@ def get_reddit_data():
     client_secret="UfWWVSymGKRdPKh4UwCPFdL2LGc",
     user_agent= "Collecting post data by /u/KimiNoNaWa",
     username="KimiNoNaWa",
-    password="!Divisi04")
+    password="!Divisi04!")
 
     subreddits = ["news", "worldnews"]
 
     data = {}
     data['news'] = []
-    data['worldnews']
+    data['worldnews'] = []
             
     # go through each subreddit
     for sr in subreddits:
@@ -64,20 +64,21 @@ def get_reddit_data():
             if count > 1001:
                 break
             
-            ## politics
-            # if submission.created_utc < 1586304000 and submission.created_utc > 1607558399:
-            #     continue
+            ## politics (2020 election cycle starting from when Biden won nomination)
+            if sr == 'politics':
+                if submission.created_utc < 1586304000 and submission.created_utc > 1607558399:
+                    continue
 
-            ## news and worldnews
-            if submission.created_utc < 1583020800 and submission.created_utc > 1614556800:
-                continue
+            ## news and worldnews (Coronavirus pandemic announcement March 11 to present (March 1 2021 as of edits))
+            if sr == 'news' or 'worldnews':
+                if submission.created_utc < 1583884800 and submission.created_utc > 1614556800:
+                    continue
             
             post = get_post_data(submission, "n/a", str(sub))
-            data['news'].append(post)
+            data[sr].append(post)
             count += 1 
     
-            print(len(data['news']))
-    
+        print(len(data[sr]))
         with open(sr + '_subreddit_data.json','w', encoding='utf-8') as f: 
             json.dump(data, f, indent=4, sort_keys=True, ensure_ascii=False) 
             

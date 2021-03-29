@@ -25,7 +25,7 @@ class Subreddit_Domain_Data:
         self.stats = {}
 
         
-        with open('subreddit_data.json') as data_file:    
+        with open(self.subreddit + '_subreddit_data.json') as data_file:    
             data = json.load(data_file)
             for post in data[subreddit]:
                 self.post_ids.append(post['id'])
@@ -204,20 +204,18 @@ class Subreddit_Domain_Data:
             if key in self.domain_counts:
                 count += self.domain_counts[key]
 
-        print(count)
-
         weighted_average_bias = 0
         weighted_average_reliability = 0
 
         for key in bias:
-            weighted_average_bias += bias[key] * self.domain_counts[key]
-            weighted_average_reliability += reliability[key] * self.domain_counts[key]
+            try:
+                weighted_average_bias += bias[key] * self.domain_counts[key]
+                weighted_average_reliability += reliability[key] * self.domain_counts[key]
+            except:
+                continue
         
         weighted_average_bias /= count
         weighted_average_reliability /= count
-
-        print(weighted_average_bias)
-        print(weighted_average_reliability)
     
     def get_bias_histogram(self):
         bias = self.domain_bias_ratings()
@@ -281,11 +279,48 @@ class Subreddit_Domain_Data:
 
         return
 
+    def get_scatterplot(self):
+        biases_dict = self.domain_bias_ratings()
+        reliability_dict = self.domain_reliability_ratings()
+        names = []
+        biases = []
+        reliability = []
+
+        for key in biases_dict.keys():
+            names.append(key)
+
+        for value in biases_dict.values():
+            biases.append(value)
+        
+        for value in reliability_dict.values():
+            reliability.append(value)
+
+        
+        plt.scatter(biases,reliability, color="red")
+        for i, label in enumerate(names):
+            plt.annotate(label, (biases[i], reliability[i]))
+        
+        plt.xlabel("Bias")
+        plt.ylabel("Reliability")
+        plt.title("Reliability and Bias Ratings of Domains Associated with Top /r/" + self.subreddit + " Posts")
+
+
+        print(len(biases))
+        
+
+        plt.show()
+
+
+
+
+        
+
     def get_post_data(self):
         self.get_url_domain_counts()
-        self.get_domain_calculations()
-        ## self.get_reliability_histogram()
-        ## self.get_bias_histogram()
+        ##self.get_domain_calculations()
+        ##self.get_reliability_histogram()
+        ##self.get_bias_histogram()
+        self.get_scatterplot()
         return
 
 def main():

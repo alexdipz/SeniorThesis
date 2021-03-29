@@ -18,14 +18,13 @@ class Subreddit_Domain_Data:
         self.titles = []
         self.words_in_titles = []
         self.words_in_comments_on_posts = []
-        self.stopwords = self.stopwords()
         self.urls = []
         self.domain_counts = {}
 
         self.stats = {}
 
         
-        with open('subreddit_data.json') as data_file:    
+        with open(subreddit + '_subreddit_data.json') as data_file:    
             data = json.load(data_file)
             for post in data[subreddit]:
                 self.post_ids.append(post['id'])
@@ -210,8 +209,11 @@ class Subreddit_Domain_Data:
         weighted_average_reliability = 0
 
         for key in bias:
-            weighted_average_bias += bias[key] * self.domain_counts[key]
-            weighted_average_reliability += reliability[key] * self.domain_counts[key]
+            try:
+                weighted_average_bias += bias[key] * self.domain_counts[key]
+                weighted_average_reliability += reliability[key] * self.domain_counts[key]
+            except:
+                continue
         
         weighted_average_bias /= count
         weighted_average_reliability /= count

@@ -34,7 +34,7 @@ class Subreddit_Sentiment_Analysis:
         self.stats = {}
 
         
-        with open('subreddit_data.json') as data_file:    
+        with open(self.subreddit + '_subreddit_data.json') as data_file:    
             data = json.load(data_file)
             for post in data[subreddit]:
                 self.post_ids.append(post['id'])
@@ -141,30 +141,42 @@ class Subreddit_Sentiment_Analysis:
 
         return
     
-    def get_positive_words(self, df):
-        pos_lines = list(df[df.label == 1].headline)
+    def get_positive_words(self, df, group):
+
+        if group == 'headline':
+            pos_lines = list(df[df.label == 1].headline)
+        if group == 'comment':
+            pos_lines = list(df[df.label == 1].comment)
+
         pos_tokens = self.process_text(pos_lines)
         pos_freq = FreqDist(pos_tokens)
-        print(pos_freq.most_common(20))
+        return pos_freq.most_common(20)
     
-    def get_negative_words(self, df):
-        neg_lines = list(df[df.label == -1].headline)
+    def get_negative_words(self, df, group):
+        
+        if group == 'headline':
+            neg_lines = list(df[df.label == -1].headline)
+        if group == 'comment':
+            neg_lines = list(df[df.label == -1].comment)
+
 
         neg_tokens = self.process_text(neg_lines)
         neg_freq = FreqDist(neg_tokens)
 
-        print(neg_freq.most_common(20))
+        return list(neg_freq.most_common(20))
     
-    def conduct_sentiment_analysis_headlines(self):
+    def conduct_sentiment_analysis(self, group):
         sia = SIA()
         results = []
 
         for line in self.titles:
             pol_score = sia.polarity_scores(line)
-            pol_score['headline'] = line
+            pol_score[group] = line
             results.append(pol_score)
         
-        pprint(results, width=100)
+        # pprint(results, width=100)
+        # print(len(self.titles))
+
 
         df = pd.DataFrame.from_records(results)
         df['label'] = 0
@@ -172,8 +184,8 @@ class Subreddit_Sentiment_Analysis:
         df.loc[df['compound'] < -0.2, 'label'] = -1
         df.head()
 
-        df2 = df[['headline', 'label']]
-        df2.to_csv('politics_headlines_labels.csv', mode='a', encoding='utf-8', index=False)
+        df2 = df[[group, 'label']]
+        df2.to_csv(self.subreddit + '_' + group + '_labels.csv', mode='a', encoding='utf-8', index=False)
 
         fig, ax = plt.subplots(figsize=(8, 8))
 
@@ -183,21 +195,27 @@ class Subreddit_Sentiment_Analysis:
 
         ax.set_xticklabels(['Negative', 'Neutral', 'Positive'])
         ax.set_ylabel("Percentage")
+        ax.set_xlabel("Sentiment")
+
+        plt.title('Sentiment Analysis of /r/' + self.subreddit + ' Top 1000 Posts\' ' + group + 's')
 
         plt.show()
-        return(df)
 
-    def conduct_sentiment_analysis_comments(self):
+        return(df)
+    
+    def conduct_sentiment_analysis_headlines_keyword(self, group, keyword):
         sia = SIA()
         results = []
 
-        for comment in self.top_comments:
-            if "Biden" or "biden" in comment:
-                pol_score = sia.polarity_scores(comment)
-                pol_score['comment'] = comment
+        for line in self.titles:
+            if keyword in line.lower():
+                pol_score = sia.polarity_scores(line)
+                pol_score[group] = line
                 results.append(pol_score)
         
-        pprint(results, width=100)
+        # pprint(results, width=100)
+        # print(len(self.titles))
+
 
         df = pd.DataFrame.from_records(results)
         df['label'] = 0
@@ -205,8 +223,8 @@ class Subreddit_Sentiment_Analysis:
         df.loc[df['compound'] < -0.2, 'label'] = -1
         df.head()
 
-        df2 = df[['comment', 'label']]
-        df2.to_csv('politics_comment_labels.csv', mode='a', encoding='utf-8', index=False)
+        df2 = df[[group, 'label']]
+        df2.to_csv(self.subreddit + '_' + group + 's_labels.csv', mode='a', encoding='utf-8', index=False)
 
         fig, ax = plt.subplots(figsize=(8, 8))
 
@@ -216,17 +234,33 @@ class Subreddit_Sentiment_Analysis:
 
         ax.set_xticklabels(['Negative', 'Neutral', 'Positive'])
         ax.set_ylabel("Percentage")
+        ax.set_xlabel("Sentiment")
+
+        plt.title('Sentiment Analysis of /r/' + self.subreddit + ' Posts\' ' + group + 's with \'' + keyword + '\' in Them')
 
         plt.show()
+
         return(df)
 
 
     def get_post_data(self):
         self.get_average_stddev_counts()
         self.get_title_word_counts()
-        df = self.conduct_sentiment_analysis_comments()
-        ##self.get_positive_words(df)
-        ##self.get_negative_words(df)
+
+        group = 'comment'
+        #df = self.conduct_sentiment_analysis('headline')
+        df = self.conduct_sentiment_analysis(group)
+
+        positive = self.get_positive_words(df, group)
+        negative = self.get_negative_words(df, group)
+
+        print(positive)
+        print(negative)
+
+        self.conduct_sentiment_analysis_headlines_keyword(group, positive[0][0]) # trump
+        self.conduct_sentiment_analysis_headlines_keyword(group, positive[1][0]) # biden
+
+        
 
         return
         
