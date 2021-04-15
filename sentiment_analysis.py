@@ -141,6 +141,16 @@ class Subreddit_Sentiment_Analysis:
 
         return
     
+    def get_words(self, df, group):
+        
+        ## most common words overall
+        neg_lines = list(df.headline)
+
+        neg_tokens = self.process_text(neg_lines)
+        neg_freq = FreqDist(neg_tokens)
+
+        return list(neg_freq.most_common(30))
+         
     def get_positive_words(self, df, group):
 
         if group == 'headline':
@@ -164,15 +174,16 @@ class Subreddit_Sentiment_Analysis:
         neg_freq = FreqDist(neg_tokens)
 
         return list(neg_freq.most_common(20))
-    
+
     def conduct_sentiment_analysis(self, group):
         sia = SIA()
         results = []
 
         for line in self.titles:
-            pol_score = sia.polarity_scores(line)
-            pol_score[group] = line
-            results.append(pol_score)
+            #if 'george' in line.lower():
+                pol_score = sia.polarity_scores(line)
+                pol_score[group] = line
+                results.append(pol_score)
         
         # pprint(results, width=100)
         # print(len(self.titles))
@@ -180,8 +191,8 @@ class Subreddit_Sentiment_Analysis:
 
         df = pd.DataFrame.from_records(results)
         df['label'] = 0
-        df.loc[df['compound'] > 0.2, 'label'] = 1
-        df.loc[df['compound'] < -0.2, 'label'] = -1
+        df.loc[df['compound'] > 0.25, 'label'] = 1
+        df.loc[df['compound'] < -0.25, 'label'] = -1
         df.head()
 
         df2 = df[[group, 'label']]
@@ -189,7 +200,11 @@ class Subreddit_Sentiment_Analysis:
 
         fig, ax = plt.subplots(figsize=(8, 8))
 
-        counts = df.label.value_counts(normalize=True) * 100
+        counts = df.label.value_counts(normalize=True, ascending = True) * 100
+        counts.sort_index()
+        print(counts)
+        print(type(counts))
+
 
         sns.barplot(x=counts.index, y=counts, ax=ax)
 
@@ -197,22 +212,36 @@ class Subreddit_Sentiment_Analysis:
         ax.set_ylabel("Percentage")
         ax.set_xlabel("Sentiment")
 
-        plt.title('Sentiment Analysis of /r/' + self.subreddit + ' Top 1000 Posts\' ' + group + 's')
+
+        rects = ax.patches
+        indexes = [-1, 0, 1]
+        count = 0
+        overall_percentages = []
+        
+        for rect, label in zip(rects, counts):
+            height = rect.get_height()
+            ax.text(rect.get_x() + rect.get_width() / 2, height - 5, str(round(counts[indexes[count]], 2)) + '%',
+                    ha='center', va='bottom')
+            overall_percentages.append(round(counts[indexes[count]], 2))
+            count += 1
+
+        plt.title('Sentiment Analysis of /r/' + self.subreddit + ' Top 1000 Posts\' ' + group.capitalize() + 's')
 
         plt.show()
 
-        return(df)
+        return df, overall_percentages
     
-    def conduct_sentiment_analysis_headlines_keyword(self, group, keyword):
+    def conduct_sentiment_analysis_headlines_keyword_exclude(self, group, keyword, bucket):
         sia = SIA()
         results = []
-
+        count = 0
         for line in self.titles:
-            if keyword in line.lower():
-                pol_score = sia.polarity_scores(line)
-                pol_score[group] = line
-                results.append(pol_score)
-        
+                if keyword not in line.lower():
+                    pol_score = sia.polarity_scores(line)
+                    pol_score[group] = line
+                    results.append(pol_score)
+                    count += 1
+        print(count)
         # pprint(results, width=100)
         # print(len(self.titles))
 
@@ -228,7 +257,8 @@ class Subreddit_Sentiment_Analysis:
 
         fig, ax = plt.subplots(figsize=(8, 8))
 
-        counts = df.label.value_counts(normalize=True) * 100
+        counts = df.label.value_counts(normalize=True, ascending = True) * 100
+        counts.sort_index()
 
         sns.barplot(x=counts.index, y=counts, ax=ax)
 
@@ -236,30 +266,214 @@ class Subreddit_Sentiment_Analysis:
         ax.set_ylabel("Percentage")
         ax.set_xlabel("Sentiment")
 
-        plt.title('Sentiment Analysis of /r/' + self.subreddit + ' Posts\' ' + group + 's with \'' + keyword + '\' in Them')
+        rects = ax.patches
+        indexes = [-1, 0, 1]
+        count = 0
+        keyword_percentages = []
+
+        for rect, label in zip(rects, counts):
+            height = rect.get_height()
+            ax.text(rect.get_x() + rect.get_width() / 2, height - 5, str(round(counts[indexes[count]], 2)) + '%',
+                    ha='center', va='bottom')
+            keyword_percentages.append(round(counts[indexes[count]], 2))
+            count += 1
+
+
+        plt.title('Sentiment Analysis of /r/' + self.subreddit + ' Posts\' ' + group.capitalize() + 's Without "' + keyword + '" in Them')
+
+        # plt.show()
+
+        return df, keyword_percentages
+
+    def conduct_sentiment_analysis_headlines_keywords_include(self, group, keyword, bucket):
+        sia = SIA()
+        results = []
+
+        for line in self.titles:
+                if keyword in line.lower():
+                    pol_score = sia.polarity_scores(line)
+                    if pol_score['compound'] > .20:
+                        print(line)
+                    pol_score[group] = line
+                    results.append(pol_score)
+        
+        # pprint(results, width=100)
+        # print(len(self.titles))
+
+
+        df = pd.DataFrame.from_records(results)
+        df['label'] = 0
+        df.loc[df['compound'] > 0.20, 'label'] = 1
+        df.loc[df['compound'] < -0.20, 'label'] = -1
+        df.head()
+
+        df2 = df[[group, 'label']]
+        df2.to_csv(self.subreddit + '_' + group + 's_labels.csv', mode='a', encoding='utf-8', index=False)
+
+        fig, ax = plt.subplots(figsize=(8, 8))
+
+        counts = df.label.value_counts(normalize=True, ascending = True) * 100
+        counts.sort_index()
+
+        sns.barplot(x=counts.index, y=counts, ax=ax)
+        print(counts)
+
+        ax.set_xticklabels(['Negative', 'Neutral', 'Positive'])
+        ax.set_ylabel("Percentage")
+        ax.set_xlabel("Sentiment")
+
+        rects = ax.patches
+        indexes = [-1, 0, 1]
+        count = 0
+        keyword_percentages = []
+
+        for rect, label in zip(rects, counts):
+            height = rect.get_height()
+            ax.text(rect.get_x() + rect.get_width() / 2, height - 5, str(round(counts[indexes[count]], 2)) + '%',
+                    ha='center', va='bottom')
+            keyword_percentages.append(round(counts[indexes[count]], 2))
+            count += 1
+
+
+        plt.title('Sentiment Analysis of /r/' + self.subreddit + ' Posts\' ' + group.capitalize() + 's with "' + keyword + '" in Them')
 
         plt.show()
 
-        return(df)
+        return df, keyword_percentages
+
+    def conduct_keyword_analysis_overall(self):
+        score = 0
+        num_comments = 0
+        for count, line in enumerate(self.titles):
+            score += self.score_per_post[count]
+            num_comments += self.comments_per_post[count]
 
 
+        return score / len(self.titles), num_comments / len(self.titles)
+
+    def conduct_keyword_analysis_keywords(self, keywords):
+        word_score_pairs = []
+        word_num_comments_pairs = []
+        for word in keywords:
+            avg_score = self.calc_avg_score(word)
+            word_score_pairs.append((word, avg_score))
+
+            avg_comments = self.calc_avg_comments(word)
+            word_num_comments_pairs.append((word, avg_comments))
+
+        return word_score_pairs, word_num_comments_pairs
+
+    def calc_avg_score(self, word):
+        total = 0
+        score = 0
+        for count, line in enumerate(self.titles):
+            if word in line.lower():
+                score += self.score_per_post[count]
+                total += 1
+        
+        return score / total
+    
+    def calc_avg_comments(self, word):
+        total = 0
+        score = 0
+        for count, line in enumerate(self.titles):
+            if word in line.lower():
+                score += self.comments_per_post[count]
+                total += 1
+        
+        return score / total
+
+    def create_score_comment_histograms(self, pairs, average, y):
+        
+        plt.bar(*zip(*pairs))
+        plt.axhline(average, color='green', linewidth=2)
+        plt.ylabel(y)
+        plt.xlabel('Most Popular Keywords Across Headlines')
+
+        if y == 'Average Score for Posts with Keyword in Headline':
+            plt.title('Average Scores of /r/' + self.subreddit + ' Posts that Have Specific Keywords in Headline')
+        
+        elif y == 'Average Number of Comments For Posts with Keyword in Headline':
+            plt.title('Average Number of Comments of /r/' + self.subreddit + ' Posts that Have Specific Keywords in Headline')
+
+        plt.show()
+
+        return
+    
     def get_post_data(self):
         self.get_average_stddev_counts()
         self.get_title_word_counts()
 
-        group = 'comment'
-        #df = self.conduct_sentiment_analysis('headline')
-        df = self.conduct_sentiment_analysis(group)
+        group = 'headline'
+        df, overall_percentages = self.conduct_sentiment_analysis(group)
 
-        positive = self.get_positive_words(df, group)
-        negative = self.get_negative_words(df, group)
+        # positive = self.get_positive_words(df, group)
+        # negative = self.get_negative_words(df, group)
+        words_tuples = self.get_words(df, group)
+        print(words_tuples)
+        conservative_words = ['trump', 'china', 'cases']
+        liberal_words = ['sanders']
 
-        print(positive)
-        print(negative)
+        words = []
+        news_out = ['says', 'u', 'us', '19', 'new', 'million', '000', 'judge', 'video', 'home', 'year', '19', 'calls', 'first', 'two', 'one']
+        for tup in words_tuples:
+            if tup[0] not in news_out:
+                words.append(tup[0])
+        print(words)
 
-        self.conduct_sentiment_analysis_headlines_keyword(group, positive[0][0]) # trump
-        self.conduct_sentiment_analysis_headlines_keyword(group, positive[1][0]) # biden
+        # words = ['trump']
 
+        # ## sentiment analysis on keywords
+        # all_keyword_percentages = []
+
+        # for word in words:
+        #     df2, keyword_percentages = self.conduct_sentiment_analysis_headlines_keyword_exclude(group, word, 'conservative') # trump
+        #     all_keyword_percentages.append(keyword_percentages)
+        
+        for word in conservative_words:
+             self.conduct_sentiment_analysis_headlines_keywords_include(group, word, 'conservative') # trump
+        
+        # print(overall_percentages)
+        # print(all_keyword_percentages)
+
+        # highest_sum = -1
+        # index = -1
+        # for count, percentages in enumerate(all_keyword_percentages):
+        #     current_sum = abs(percentages[0] - overall_percentages[0]) + abs(percentages[1] - overall_percentages[1])  + abs(percentages[2] - overall_percentages[2]) 
+        #     if highest_sum < current_sum:
+        #         highest_sum = current_sum
+        #         index = count
+        
+        # print(highest_sum)
+        # print(index)
+        # print(words[index])
+            
+
+
+        
+        ## keyword analysis on keywords
+
+        # words_scores, words_num_comments = self.conduct_keyword_analysis_keywords(words)
+        # words_scores.sort(key=lambda x:x[1])
+        # words_num_comments.sort(key=lambda x:x[1])
+
+        # avg_score, avg_num_comments = self.conduct_keyword_analysis_overall()
+
+        # print(words_scores)
+        # print(words_num_comments)
+
+        # self.create_score_comment_histograms(words_scores, avg_score, 'Average Score for Posts with Keyword in Headline')
+        # self.create_score_comment_histograms(words_num_comments, avg_num_comments, 'Average Number of Comments For Posts with Keyword in Headline')
+
+
+        # print(self.stats['average_score'])
+        # print(self.stats['average_comment_count']) 
+        # print(self.stats['std_dev_score'])
+        # print(self.stats['std_dev_comment_count'])
+
+
+
+    
         
 
         return
@@ -268,7 +482,7 @@ def main():
     subreddit = sys.argv[1]
     test_object = Subreddit_Sentiment_Analysis(subreddit)
     test_object.get_post_data()
-    test_object.get_title_word_counts()
+    # test_object.get_title_word_counts()
 
 
 

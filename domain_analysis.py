@@ -181,6 +181,14 @@ class Subreddit_Domain_Data:
             domain = getattr(ext, 'domain')
             if 'fox' in domain:
                 domain = 'fox'
+            if 'abc' in domain: 
+                domain = 'abc'
+            if 'cbs' in domain:
+                domain = 'cbsnews'
+            if 'nbc' in domain and 'cnbc' not in domain:
+                domain = 'nbcnews'
+            if 'npr' in domain:
+                domain = 'npr'
 
             if domain in self.domain_counts:
                 self.domain_counts[domain] = self.domain_counts[domain] + 1
@@ -188,11 +196,9 @@ class Subreddit_Domain_Data:
                 self.domain_counts[domain] = 1
             
             count += 1
-        
+
         print(self.domain_counts)
-        print("")
-        print(sum(self.domain_counts.values()))
-            
+                    
         return
     
     def get_domain_calculations(self):
@@ -216,6 +222,10 @@ class Subreddit_Domain_Data:
         
         weighted_average_bias /= count
         weighted_average_reliability /= count
+
+        print(count)
+        print(weighted_average_bias)
+        print(weighted_average_reliability)
     
     def get_bias_histogram(self):
         bias = self.domain_bias_ratings()
@@ -317,9 +327,9 @@ class Subreddit_Domain_Data:
 
     def get_post_data(self):
         self.get_url_domain_counts()
-        ##self.get_domain_calculations()
-        ##self.get_reliability_histogram()
-        ##self.get_bias_histogram()
+        self.get_domain_calculations()
+        self.get_reliability_histogram()
+        self.get_bias_histogram()
         self.get_scatterplot()
         return
 
